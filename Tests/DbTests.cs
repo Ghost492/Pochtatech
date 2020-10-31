@@ -1,6 +1,7 @@
 ﻿using System;
 using Common;
 using DataContext;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 
@@ -8,35 +9,24 @@ namespace Tests
 {
     class DbTests
     {
-        private ServiceAMessagesStorage _messagesDataContext { get; set; }
-        [SetUp]
-        public void Setup()
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .AddEnvironmentVariables()
-                .Build();
-            _messagesDataContext = new ServiceAMessagesStorage(configuration.GetValue<string>("dbConnectionString"));
-        }
+        private string connectionString = "Data source=172.18.115.36;Database=ServiceA;User ID=sa;Password=qwe123!@#;";
 
         [Test]
-        public void GenerateMessages()
+        public void ConnectionToDbTest()
         {
-            for (var i = 1; i < 100000; i++)
+            using (var connection = new SqlConnection(connectionString))
             {
-            //    _messagesDataContext.Create(GenerateMessage(i));
+                connection.Open();
             }
 
         }
-
-        private MessageModel GenerateMessage(int i)
+        [Test]
+        public void GetMessageTest()
         {
-            return new MessageModel()
-            {
-                MessageNumber = i,
-                Text = $"random text {Guid.NewGuid()}",
-                Hash = Guid.NewGuid().GetHashCode()
-            };
+            var storage = new ServiceAMessagesStorage(connectionString);
+            var message = storage.GetNext();
+            Assert.IsNotNull(message);
+            Assert.IsNull(message.SendTime);
         }
     }
 }

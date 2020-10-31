@@ -16,25 +16,6 @@ namespace Sender
         private static readonly string _serviceMessageIdentifier = "serviceMessageIdentifier";
         private static ILogger _logger;
 
-        private static ServiceProvider ConfigureServices()
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .AddEnvironmentVariables()
-                .Build();
-            var dbConnectionString = configuration.GetValue<string>("dbConnectionString");
-            var serviceProvider = new ServiceCollection()
-                .AddLogging()
-                .AddAutoMapper(config =>
-                {
-                    config.CreateMap<ServiceAMessagesStorage.Message, MessageModel>();
-                })
-                .AddSingleton(new ServiceAMessagesStorage(dbConnectionString))
-                .AddSingleton((s) => new Sender<MessageModel>(_serviceMessageIdentifier, s.GetService<ILogger>()))
-                .AddSingleton<ILogger>(s=>s.GetService<ILoggerFactory>().CreateLogger<Program>())
-                .BuildServiceProvider();
-            return serviceProvider;
-        }
         static void Main(string[] args)
         {
             var serviceProvider = ConfigureServices();
@@ -52,8 +33,27 @@ namespace Sender
             {
                 _logger.LogError(e.ToString());
             }
-            Console.WriteLine("Application will be closed. Please wait 10 seconds...");
+            Console.WriteLine("Application will be closed. Please, wait 10 seconds...");
             Thread.Sleep(10 * 1000);
+        }
+        private static ServiceProvider ConfigureServices()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+                .AddEnvironmentVariables()
+                .Build();
+            var dbConnectionString = configuration.GetValue<string>("dbConnectionString");
+            var serviceProvider = new ServiceCollection()
+                .AddLogging()
+                .AddAutoMapper(config =>
+                {
+                    config.CreateMap<ServiceAMessagesStorage.Message, MessageModel>();
+                })
+                .AddSingleton(new ServiceAMessagesStorage(dbConnectionString))
+                .AddSingleton((s) => new DataSender<MessageModel>(_serviceMessageIdentifier, s.GetService<ILogger>()))
+                .AddSingleton<ILogger>(s => s.GetService<ILoggerFactory>().CreateLogger<Program>())
+                .BuildServiceProvider();
+            return serviceProvider;
         }
 
         private static void StartService(CancellationToken token, ServiceProvider serviceProvider)
@@ -65,10 +65,10 @@ namespace Sender
             {
                 try
                 {
-                    using var sender = serviceProvider.GetService<Sender<MessageModel>>();
+                    using var sender = serviceProvider.GetService<DataSender<MessageModel>>();
                     while (!token.IsCancellationRequested)
                     {
-                        var message = storage.GetNextMessage();
+                        var message = storage.GetNext();
                         if (message != null)
                         {
                             message.SendTime = DateTime.UtcNow;

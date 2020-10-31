@@ -1,13 +1,10 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using System.Configuration;
-using System.Linq;
-using Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataContext
 {
-    public class ServiceBMessagesStorage : DataContextBase<MessageModel>
+    public class ServiceBMessagesStorage : DataContextBase<ServiceBMessagesStorage.Message>
     {
         public class Message
         {
@@ -20,9 +17,9 @@ namespace DataContext
         }
         private DbSet<Message> Messages { get; set; }
 
-        public void Create(Message messageModel)
+        public override void Create(Message data)
         {
-            Messages.Add(messageModel);
+            Messages.Add(data);
             SaveChanges();
         }
 

@@ -1,13 +1,11 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using System.Configuration;
 using System.Linq;
-using Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataContext
 {
-    public class ServiceAMessagesStorage : DataContextBase<MessageModel>
+    public class ServiceAMessagesStorage : DataContextBase<ServiceAMessagesStorage.Message>
     {
         public class Message
         {
@@ -18,17 +16,17 @@ namespace DataContext
             public int Hash { get; set; }
         }
         private DbSet<Message> Messages { get; set; }
-     
-        public Message GetNextMessage()
+
+        public Message GetNext()
         {
             return Messages
                 .OrderBy(x => x.MessageNumber)
                 .FirstOrDefault(x => !x.SendTime.HasValue);
         }
 
-        public void Update(Message messageModel)
+        public override void Update(Message data)
         {
-            Messages.Update(messageModel);
+            Messages.Update(data);
             SaveChanges();
         }
 

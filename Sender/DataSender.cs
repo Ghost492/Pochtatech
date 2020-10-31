@@ -5,14 +5,14 @@ using NATS.Client;
 
 namespace Sender
 {
-    public class Sender<T> : IDisposable
+    public class DataSender<T> : IDisposable
 
     {
         private readonly string _subjectString;
         private readonly ILogger _logger;
         private readonly IEncodedConnection _connection;
 
-        public Sender(string subjectString, ILogger logger)
+        public DataSender(string subjectString, ILogger logger)
         {
             _subjectString = subjectString;
             _logger = logger;
