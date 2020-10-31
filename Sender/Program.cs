@@ -1,35 +1,52 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoMapper;
 using Common;
 using DataContext;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NATS.Client;
 
 namespace Sender
 {
     public class Program
     {
         private static readonly string _serviceMessageIdentifier = "serviceMessageIdentifier";
-        private static IConfigurationRoot _configuration;
         private static ILogger _logger;
 
-        static void Main(string[] args)
+        private static ServiceProvider ConfigureServices()
         {
-            _configuration = new ConfigurationBuilder()
+            var configuration = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .AddEnvironmentVariables()
                 .Build();
-            _logger = new ConsoleLogger();
+            var dbConnectionString = configuration.GetValue<string>("dbConnectionString");
+            var serviceProvider = new ServiceCollection()
+                .AddLogging()
+                .AddAutoMapper(config =>
+                {
+                    config.CreateMap<ServiceAMessagesStorage.Message, MessageModel>();
+                })
+                .AddSingleton(new ServiceAMessagesStorage(dbConnectionString))
+                .AddSingleton((s) => new Sender<MessageModel>(_serviceMessageIdentifier, s.GetService<ILogger>()))
+                .AddSingleton<ILogger>(s=>s.GetService<ILoggerFactory>().CreateLogger<Program>())
+                .BuildServiceProvider();
+            return serviceProvider;
+        }
+        static void Main(string[] args)
+        {
+            var serviceProvider = ConfigureServices();
+            _logger = serviceProvider.GetService<ILogger>();
+
             try
             {
                 var token = new CancellationTokenSource();
-                Task.Run(() => Run(token.Token), token.Token);
+                Task.Run(() => StartService(token.Token, serviceProvider), token.Token);
                 Console.ReadLine();
                 token.Cancel();
-                
+
             }
             catch (Exception e)
             {
@@ -39,25 +56,37 @@ namespace Sender
             Thread.Sleep(10 * 1000);
         }
 
-        private static void Run(CancellationToken token)
+        private static void StartService(CancellationToken token, ServiceProvider serviceProvider)
         {
-           
-           var messagesDataContext = new ServiceAMessagesStorage(_configuration.GetValue<string>("dbConnectionString"));
-            using var sender = new Sender<Message>(_serviceMessageIdentifier, _logger);
+            var logger = serviceProvider.GetService<ILogger>();
+            var storage = serviceProvider.GetService<ServiceAMessagesStorage>();
+            var mapper = serviceProvider.GetService<IMapper>();
             while (!token.IsCancellationRequested)
             {
-                var message = messagesDataContext.GetNextMessage();
-                if (message != null)
+                try
                 {
-                    message.SendTime = DateTime.UtcNow;
-                    while (!sender.SendData(message))
+                    using var sender = serviceProvider.GetService<Sender<MessageModel>>();
+                    while (!token.IsCancellationRequested)
                     {
-                        if(token.IsCancellationRequested) return;
+                        var message = storage.GetNextMessage();
+                        if (message != null)
+                        {
+                            message.SendTime = DateTime.UtcNow;
+                            var messageModel = mapper.Map<MessageModel>(message);
+                            while (!sender.SendData(messageModel))
+                            {
+                                if (token.IsCancellationRequested) return;
+                                Thread.Sleep(1000);
+                            }
+                            storage.Update(message);
+                        }
                         Thread.Sleep(1000);
                     }
-                    messagesDataContext.Update(message);
                 }
-                Thread.Sleep(60*1000);
+                catch (NATSNoServersException e)
+                {
+                    logger.LogError(e.Message);
+                }
             }
         }
     }

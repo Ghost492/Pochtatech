@@ -14,7 +14,6 @@ namespace DataContext
         {
             optionsBuilder.UseSqlServer(_connectionString);
         }
-        protected DbSet<T> Messages { get; set; }
 
         public DataContextBase(string connectionString)
         {
@@ -23,18 +22,6 @@ namespace DataContext
                 throw new ApplicationException("Connection string not found.");
             }
             _connectionString = connectionString;
-        }
-
-        public void Create(T message)
-        {
-            Messages.Add(message);
-            SaveChanges();
-        }
-
-        public void Update(T message)
-        {
-            Messages.Update(message);
-            SaveChanges();
         }
     }
 }

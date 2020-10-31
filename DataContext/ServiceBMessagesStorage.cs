@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DataContext
 {
-    public class ServiceAMessagesStorage : DataContextBase<MessageModel>
+    public class ServiceBMessagesStorage : DataContextBase<MessageModel>
     {
         public class Message
         {
@@ -16,23 +16,17 @@ namespace DataContext
             public DateTime? SendTime { get; set; }
             public string Text { get; set; }
             public int Hash { get; set; }
+            public DateTime? TimeOfReceipt { get; set; }
         }
         private DbSet<Message> Messages { get; set; }
-     
-        public Message GetNextMessage()
-        {
-            return Messages
-                .OrderBy(x => x.MessageNumber)
-                .FirstOrDefault(x => !x.SendTime.HasValue);
-        }
 
-        public void Update(Message messageModel)
+        public void Create(Message messageModel)
         {
-            Messages.Update(messageModel);
+            Messages.Add(messageModel);
             SaveChanges();
         }
 
-        public ServiceAMessagesStorage(string connectionString) : base(connectionString)
+        public ServiceBMessagesStorage(string connectionString) : base(connectionString)
         {
         }
     }

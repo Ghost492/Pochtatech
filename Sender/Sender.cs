@@ -16,16 +16,17 @@ namespace Sender
         {
             _subjectString = subjectString;
             _logger = logger;
-            _connection = new ConnectionFactory().CreateEncodedConnection();
+            var options = ConnectionFactory.GetDefaultOptions();
+            options.AllowReconnect = true;
+            options.MaxReconnect = Options.ReconnectForever;
+            _connection = new ConnectionFactory().CreateEncodedConnection(options);
             _connection.OnSerialize = JsonSerializer<T>.Serialize;
-            _connection.Opts.AllowReconnect = true;
         }
 
         public bool SendData(T data)
         {
             try
             {
-                Console.WriteLine("Send Message");
                 _connection.Publish(_subjectString, data);
             }
             catch (Exception e)

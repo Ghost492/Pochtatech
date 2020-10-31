@@ -24,14 +24,14 @@ namespace Tests
         {
             for (var i = 1; i < 100000; i++)
             {
-                _messagesDataContext.Create(GenerateMessage(i));
+            //    _messagesDataContext.Create(GenerateMessage(i));
             }
 
         }
 
-        private Message GenerateMessage(int i)
+        private MessageModel GenerateMessage(int i)
         {
-            return new Message()
+            return new MessageModel()
             {
                 MessageNumber = i,
                 Text = $"random text {Guid.NewGuid()}",

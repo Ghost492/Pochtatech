@@ -1,13 +1,12 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
 
 namespace Common
 {
     [DataContract]
-    public class Message
+    public class MessageModel
     {
-        [DataMember][Key]
+        [DataMember]
         public int MessageNumber { get; set; }
         [DataMember]
         public DateTime? SendTime { get; set; }
